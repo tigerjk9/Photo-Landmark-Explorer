@@ -149,11 +149,19 @@ const App: React.FC = () => {
         setSources([]);
         setBase64Audio('');
         setImageFile(null);
+
         if (imageUrl) {
-            URL.revokeObjectURL(imageUrl);
-            setImageUrl(null);
+            // Only revoke the URL if it's NOT part of the saved tour history.
+            // This prevents revoking URLs we want to view again later in the same tour.
+            const isUrlInHistory = tourHistory.some(stop => stop.imageUrl === imageUrl);
+            if (!isUrlInHistory) {
+                URL.revokeObjectURL(imageUrl);
+            }
         }
+        setImageUrl(null);
+        
         if (isNewTour) {
+            // When starting a fresh tour, revoke all previously created object URLs.
             tourHistory.forEach(stop => URL.revokeObjectURL(stop.imageUrl));
             setTourHistory([]);
             setIsTourEnded(false);
