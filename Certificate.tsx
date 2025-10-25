@@ -13,24 +13,9 @@ const Certificate: React.FC<CertificateProps> = ({ explorerName, tourHistory, ap
     const [isDownloading, setIsDownloading] = useState(false);
     const [downloadError, setDownloadError] = useState<string | null>(null);
     const [downloadFormat, setDownloadFormat] = useState<'png' | 'jpeg'>('png');
-    const [fontLoaded, setFontLoaded] = useState(false);
     
     const [emojis, setEmojis] = useState<string[]>([]);
     const [isLoadingEmojis, setIsLoadingEmojis] = useState(true);
-
-    // Pretendard 폰트 로드 확인
-    useEffect(() => {
-        const loadFont = async () => {
-            try {
-                await document.fonts.load('20px Pretendard');
-                setFontLoaded(true);
-            } catch (error) {
-                console.log('Font loading error:', error);
-                setFontLoaded(true); // 폰트 로드 실패해도 진행
-            }
-        };
-        loadFont();
-    }, []);
 
     useEffect(() => {
         const fetchEmojis = async () => {
@@ -54,10 +39,9 @@ const Certificate: React.FC<CertificateProps> = ({ explorerName, tourHistory, ap
         fetchEmojis();
     }, [apiKey, tourHistory]);
 
-    const handleDownload = async () => {
-        const node = certificateRef.current;
-        if (!node || isDownloading) return;
-
+    const handleDownload = () => {
+        if (isDownloading) return;
+        
         setIsDownloading(true);
         setDownloadError(null);
 
@@ -67,18 +51,16 @@ const Certificate: React.FC<CertificateProps> = ({ explorerName, tourHistory, ap
             const ctx = canvas.getContext('2d');
             
             if (!ctx) {
-                throw new Error("Canvas context를 생성할 수 없습니다.");
+                throw new Error("Canvas를 생성할 수 없습니다.");
             }
 
-            // 수료증 크기 설정
-            const scale = 2; // 고해상도
+            // 크기 설정
             const width = 800;
             const height = 600;
-            canvas.width = width * scale;
-            canvas.height = height * scale;
-            ctx.scale(scale, scale);
+            canvas.width = width;
+            canvas.height = height;
 
-            // 배경색
+            // 배경
             ctx.fillStyle = '#fef2f2';
             ctx.fillRect(0, 0, width, height);
 
@@ -87,16 +69,15 @@ const Certificate: React.FC<CertificateProps> = ({ explorerName, tourHistory, ap
             ctx.lineWidth = 8;
             ctx.strokeRect(20, 20, width - 40, height - 40);
 
-            // Pretendard 폰트 사용
-            const fontFamily = '"Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+            // 기본 폰트
             ctx.textAlign = 'center';
             ctx.fillStyle = '#7f1d1d';
 
             // 제목
-            ctx.font = `bold 36px ${fontFamily}`;
+            ctx.font = 'bold 36px sans-serif';
             ctx.fillText('수료증', width / 2, 80);
             
-            ctx.font = `20px ${fontFamily}`;
+            ctx.font = '20px sans-serif';
             ctx.fillStyle = '#b91c1c';
             ctx.fillText('Certificate of Completion', width / 2, 110);
 
@@ -105,80 +86,75 @@ const Certificate: React.FC<CertificateProps> = ({ explorerName, tourHistory, ap
             ctx.fillRect(width / 2 - 48, 130, 96, 4);
 
             // 탐험가 이름
-            ctx.fillStyle = '#1f2937';
-            ctx.font = `18px ${fontFamily}`;
+            ctx.fillStyle = '#374151';
+            ctx.font = '18px sans-serif';
             ctx.fillText('탐험가:', width / 2 - 50, 180);
+            
             ctx.fillStyle = '#7f1d1d';
-            ctx.font = `bold 24px ${fontFamily}`;
+            ctx.font = 'bold 24px sans-serif';
             ctx.fillText(explorerName || "이름 없음", width / 2 + 50, 180);
 
-            // 설명 텍스트
-            ctx.fillStyle = '#1f2937';
-            ctx.font = `16px ${fontFamily}`;
-            const description = '위 탐험가는 포토 랜드마크 탐험가 프로그램을 통해';
-            const description2 = '아래의 랜드마크를 성공적으로 탐험하였기에';
-            const description3 = '이 증서를 수여합니다.';
-            ctx.fillText(description, width / 2, 220);
-            ctx.fillText(description2, width / 2, 245);
-            ctx.fillText(description3, width / 2, 270);
+            // 설명
+            ctx.fillStyle = '#374151';
+            ctx.font = '16px sans-serif';
+            ctx.fillText('위 탐험가는 포토 랜드마크 탐험가 프로그램을 통해', width / 2, 220);
+            ctx.fillText('아래의 랜드마크를 성공적으로 탐험하였기에', width / 2, 245);
+            ctx.fillText('이 증서를 수여합니다.', width / 2, 270);
 
             // 랜드마크 목록 배경
-            ctx.fillStyle = 'rgba(255, 228, 230, 0.5)';
-            ctx.fillRect(100, 300, width - 200, Math.min(tourHistory.length * 30 + 20, 180));
+            const listHeight = Math.min(tourHistory.length * 30 + 20, 180);
+            ctx.fillStyle = 'rgba(255, 228, 230, 0.3)';
+            ctx.fillRect(100, 300, width - 200, listHeight);
 
             // 랜드마크 목록
-            ctx.fillStyle = '#1f2937';
-            ctx.font = `16px ${fontFamily}`;
+            ctx.fillStyle = '#374151';
+            ctx.font = '16px sans-serif';
             ctx.textAlign = 'left';
-            tourHistory.forEach((landmark, index) => {
-                if (index < 5) { // 최대 5개까지만 표시
-                    const y = 325 + index * 30;
-                    const emoji = isLoadingEmojis ? '⏳' : (emojis[index] || '📍');
-                    ctx.fillText(`${emoji} ${landmark.name} (${landmark.city})`, 120, y);
-                }
+            
+            const maxItems = 5;
+            tourHistory.slice(0, maxItems).forEach((landmark, index) => {
+                const y = 325 + index * 30;
+                const emoji = emojis[index] || '📍';
+                ctx.fillText(`${emoji} ${landmark.name} (${landmark.city})`, 120, y);
             });
-            if (tourHistory.length > 5) {
-                ctx.fillText(`... 외 ${tourHistory.length - 5}곳`, 120, 325 + 5 * 30);
+            
+            if (tourHistory.length > maxItems) {
+                ctx.fillText(`... 외 ${tourHistory.length - maxItems}곳`, 120, 325 + maxItems * 30);
             }
 
             // 날짜와 서명
             ctx.textAlign = 'center';
             const today = new Date();
             const dateString = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
-            ctx.font = `18px ${fontFamily}`;
+            
+            ctx.font = '18px sans-serif';
+            ctx.fillStyle = '#374151';
             ctx.fillText(dateString, width / 2, height - 80);
             
             ctx.fillStyle = '#7f1d1d';
-            ctx.font = `bold 24px ${fontFamily}`;
+            ctx.font = 'bold 24px sans-serif';
             ctx.fillText('AI 도슨트', width / 2, height - 50);
 
-            // Canvas를 이미지로 변환하여 다운로드
+            // dataURL로 변환하여 다운로드
             const mimeType = downloadFormat === 'png' ? 'image/png' : 'image/jpeg';
-            const quality = downloadFormat === 'jpeg' ? 0.95 : undefined;
+            const dataUrl = canvas.toDataURL(mimeType, 0.95);
             
-            canvas.toBlob((blob) => {
-                if (!blob) {
-                    throw new Error("이미지 생성에 실패했습니다.");
-                }
-                
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `landmark-explorer-certificate.${downloadFormat}`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                
-                // 메모리 정리
-                setTimeout(() => URL.revokeObjectURL(url), 100);
-                
-                setIsDownloading(false);
-                setDownloadError(null);
-            }, mimeType, quality);
+            // 다운로드 링크 생성
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = `landmark-certificate.${downloadFormat}`;
+            
+            // 클릭 이벤트 발생
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            setIsDownloading(false);
+            setDownloadError(null);
 
         } catch (error: any) {
             console.error('Download error:', error);
-            setDownloadError(error.message || "인증서 다운로드 중 알 수 없는 오류가 발생했습니다.");
+            setDownloadError('다운로드에 실패했습니다. 스크린샷을 찍어 저장해주세요.');
             setIsDownloading(false);
         }
     };
@@ -186,18 +162,9 @@ const Certificate: React.FC<CertificateProps> = ({ explorerName, tourHistory, ap
     const today = new Date();
     const dateString = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
 
-    // 수료증 스타일 (Pretendard 폰트 적용)
-    const certificateStyle = {
-        fontFamily: '"Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
-    };
-
     return (
         <div className="mt-12 p-4 sm:p-6 bg-white rounded-lg shadow-xl animate-fade-in">
-            <div 
-                ref={certificateRef} 
-                className="p-6 sm:p-10 border-8 border-rose-800 bg-rose-50 text-stone-700"
-                style={certificateStyle}
-            >
+            <div ref={certificateRef} className="p-6 sm:p-10 border-8 border-rose-800 bg-rose-50 text-stone-700">
                 <div className="text-center">
                     <h2 className="text-3xl sm:text-4xl font-bold text-rose-900 mb-2">수료증</h2>
                     <p className="text-md sm:text-lg text-rose-700">Certificate of Completion</p>
@@ -216,9 +183,7 @@ const Certificate: React.FC<CertificateProps> = ({ explorerName, tourHistory, ap
                     {tourHistory.map((landmark, index) => (
                         <li key={landmark.name} className="flex items-center">
                             <span className="mr-2 text-xl w-6 text-center">
-                                {isLoadingEmojis ? (
-                                    <span className="inline-block w-3 h-3 bg-stone-300 rounded-full animate-pulse"></span>
-                                ) : (emojis[index] || '📍')}
+                                {isLoadingEmojis ? '⏳' : (emojis[index] || '📍')}
                             </span>
                             <span><span className="font-semibold">{landmark.name}</span> ({landmark.city})</span>
                         </li>
@@ -242,9 +207,7 @@ const Certificate: React.FC<CertificateProps> = ({ explorerName, tourHistory, ap
                                 value="png" 
                                 checked={downloadFormat === 'png'} 
                                 onChange={() => setDownloadFormat('png')} 
-                                className="form-radio h-4 w-4 text-rose-500 border-stone-300 focus:ring-rose-400" 
-                            /> 
-                            PNG
+                            /> PNG
                         </label>
                         <label className="flex items-center gap-1.5 cursor-pointer text-stone-600">
                             <input 
@@ -253,28 +216,19 @@ const Certificate: React.FC<CertificateProps> = ({ explorerName, tourHistory, ap
                                 value="jpeg" 
                                 checked={downloadFormat === 'jpeg'} 
                                 onChange={() => setDownloadFormat('jpeg')} 
-                                className="form-radio h-4 w-4 text-rose-500 border-stone-300 focus:ring-rose-400" 
-                            /> 
-                            JPG
+                            /> JPG
                         </label>
                     </div>
                     <button 
                         onClick={handleDownload}
-                        disabled={isDownloading || isLoadingEmojis || !fontLoaded}
+                        disabled={isDownloading || isLoadingEmojis}
                         className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-full transition duration-300 transform hover:scale-105 shadow-lg disabled:bg-stone-400 disabled:cursor-wait w-full sm:w-auto"
                     >
                         {isDownloading ? '생성 중...' : '인증서 이미지로 다운로드'}
                     </button>
                 </div>
                 {downloadError && (
-                    <div className="mt-3 text-center">
-                        <p className="text-red-600 text-sm">
-                            {downloadError}
-                        </p>
-                        <p className="text-stone-500 text-xs mt-1">
-                            문제가 지속되면 스크린샷을 찍어서 저장해주세요.
-                        </p>
-                    </div>
+                    <p className="text-red-600 mt-3 text-sm text-center">{downloadError}</p>
                 )}
             </div>
         </div>
