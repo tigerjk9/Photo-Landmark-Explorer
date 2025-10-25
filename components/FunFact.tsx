@@ -3,9 +3,11 @@ import { fetchFunFact } from '../services/geminiService';
 
 interface FunFactProps {
     landmarkName: string;
+    userLevel: string;
+    apiKey: string;
 }
 
-const FunFact: React.FC<FunFactProps> = ({ landmarkName }) => {
+const FunFact: React.FC<FunFactProps> = ({ landmarkName, userLevel, apiKey }) => {
     const [fact, setFact] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -15,7 +17,7 @@ const FunFact: React.FC<FunFactProps> = ({ landmarkName }) => {
         setError(null);
         setFact(null);
         try {
-            const newFact = await fetchFunFact(landmarkName);
+            const newFact = await fetchFunFact(apiKey, landmarkName, userLevel);
             setFact(newFact);
         } catch (err) {
             setError('재미있는 사실을 가져오는 데 실패했습니다.');

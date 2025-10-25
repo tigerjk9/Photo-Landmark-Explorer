@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { LandmarkInfo } from '../types';
+import Certificate from './Certificate';
 
 interface TourSummaryProps {
     tourHistory: LandmarkInfo[];
@@ -27,6 +28,18 @@ const LandmarkCard: React.FC<{ landmark: LandmarkInfo; index: number; onClick: (
 };
 
 const TourSummary: React.FC<TourSummaryProps> = ({ tourHistory, onRestart, onSelectLandmark }) => {
+    const [explorerName, setExplorerName] = useState('');
+    const [showCertificate, setShowCertificate] = useState(false);
+
+    const handleGenerateCertificate = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (explorerName.trim()) {
+            setShowCertificate(true);
+        } else {
+            alert('인증서에 사용할 이름을 입력해주세요.');
+        }
+    };
+
     return (
         <div className="w-full max-w-6xl mx-auto p-4 md:p-8 text-center animate-fade-in">
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-stone-800 mb-4 shadow-text">나의 투어 요약</h1>
@@ -48,6 +61,34 @@ const TourSummary: React.FC<TourSummaryProps> = ({ tourHistory, onRestart, onSel
                     <p className="text-xl text-stone-500">탐험 기록이 없습니다. 새로운 투어를 시작해보세요!</p>
                 </div>
             )}
+            
+            {tourHistory.length > 0 && !showCertificate && (
+                <div className="mt-12 p-6 bg-white/60 backdrop-blur-sm rounded-lg shadow-lg animate-fade-in">
+                    <h2 className="text-2xl font-bold text-stone-800 mb-4">나만의 탐험 인증서 만들기</h2>
+                    <p className="text-stone-600 mb-4">탐험가님의 이름을 입력하고 멋진 인증서를 받아보세요!</p>
+                    <form onSubmit={handleGenerateCertificate} className="flex flex-col sm:flex-row justify-center items-center gap-2">
+                        <input 
+                            type="text"
+                            value={explorerName}
+                            onChange={(e) => setExplorerName(e.target.value)}
+                            placeholder="이름을 입력하세요"
+                            className="bg-white text-stone-800 rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-rose-400 w-64"
+                            aria-label="탐험가 이름"
+                        />
+                        <button 
+                            type="submit"
+                            className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-6 rounded-full transition duration-300"
+                        >
+                            인증서 생성
+                        </button>
+                    </form>
+                </div>
+            )}
+            
+            {showCertificate && tourHistory.length > 0 && (
+                <Certificate explorerName={explorerName} tourHistory={tourHistory} />
+            )}
+
 
             <div className="mt-12">
                 <button 

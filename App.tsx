@@ -1,23 +1,32 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { LoadingStep, GroundingSource, LandmarkInfo, TourStop } from './types';
 import { identifyLandmark, fetchLandmarkHistory, generateSpeech } from './services/geminiService';
 import Spinner from './components/Spinner';
-import AudioPlayer from './components/AudioPlayer';
-import FunFact from './components/FunFact';
-import ArtworkGenerator from './components/ArtworkGenerator';
-import QAChat from './components/QAChat';
-import LocationMap from './components/LocationMap';
 import TourSummary from './components/TourSummary';
+import ResultDisplay from './components/ResultDisplay';
 
 // --- Helper components defined outside App to prevent re-rendering issues ---
 
 interface ImageUploaderProps {
   onImageSelect: (file: File) => void;
   isLoading: boolean;
+  userLevel: string;
+  setUserLevel: (level: string) => void;
+  apiKey: string | null;
+  onApiKeySubmit: (key: string) => void;
 }
 
-const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelect, isLoading }) => {
+const userLevels = [
+  '호기심 많은 어린이 (7-9세)',
+  '꼬마 역사학자 (10-12세)',
+  '청소년 탐험가 (13-15세)',
+  '예비 지성인 (16-18세)',
+  '성인 교양 수준'
+];
+
+const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelect, isLoading, userLevel, setUserLevel, apiKey, onApiKeySubmit }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [keyInput, setKeyInput] = useState('');
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -29,84 +38,112 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelect, isLoading 
   const handleButtonClick = () => {
     fileInputRef.current?.click();
   };
+  
+  const handleKeySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (keyInput.trim()) {
+      onApiKeySubmit(keyInput.trim());
+      setKeyInput('');
+    }
+  };
+
+  const getHelperText = () => {
+    if (isLoading) return null;
+    const missing = [];
+    if (!userLevel) missing.push("탐험가님의 수준을 선택");
+    if (!apiKey) missing.push("API 키를 입력");
+    if (missing.length > 0) {
+        return `사진을 업로드하려면 먼저 ${missing.join('하고 ')}해주세요.`;
+    }
+    return null;
+  }
+  const helperText = getHelperText();
 
   return (
     <div className="w-full max-w-2xl mx-auto text-center p-8">
-      <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-stone-800 mb-4 shadow-text">포토 랜드마크 탐험가</h1>
-      <p className="text-lg text-stone-600 mb-8 max-w-2xl mx-auto shadow-text">랜드마크 사진을 업로드하여 AI가 들려주는 해설과 함께 그 역사를 알아보세요.</p>
+      <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-rose-800 mb-4 shadow-text">포토 랜드마크 탐험가</h1>
+      <p className="text-lg text-rose-600 mb-8 max-w-2xl mx-auto shadow-text">랜드마크 사진을 업로드하여 AI가 들려주는 해설과 함께 그 역사를 알아보세요.</p>
+      
+      <div className="mb-8 p-6 bg-white/30 backdrop-blur-sm rounded-lg">
+        <h2 className="text-xl font-semibold text-stone-700 mb-4">탐험가님은 누구신가요?</h2>
+        <div className="flex flex-wrap justify-center gap-3">
+          {userLevels.map(level => (
+            <button
+              key={level}
+              onClick={() => setUserLevel(level)}
+              className={`px-4 py-2 rounded-full font-semibold transition-all duration-200 text-sm md:text-base ${
+                userLevel === level
+                  ? 'bg-rose-500 text-white shadow-md scale-105'
+                  : 'bg-white text-stone-600 hover:bg-rose-100 shadow-sm'
+              }`}
+            >
+              {level}
+            </button>
+          ))}
+        </div>
+      </div>
+      
+      <div className="mb-8 p-6 bg-white/30 backdrop-blur-sm rounded-lg">
+        <div className="flex justify-between items-center mb-4">
+           <h2 className="text-xl font-semibold text-stone-700">Google Gemini API 키</h2>
+           <a 
+                href="https://aistudio.google.com/app/apikey" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-sm bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-1 px-3 rounded-full transition duration-300 transform hover:scale-105"
+            >
+                키 받으러 가기
+            </a>
+        </div>
+        {apiKey ? (
+           <div className="flex items-center gap-2">
+             <p className="flex-grow text-left bg-white/50 p-3 rounded-full text-stone-600 shadow-inner px-5">API 키가 저장되었습니다.</p>
+             <button 
+                onClick={() => onApiKeySubmit('')} 
+                className="bg-stone-400 hover:bg-stone-500 text-white font-semibold py-2 px-4 rounded-full transition-colors"
+             >
+                수정
+             </button>
+           </div>
+        ) : (
+          <form onSubmit={handleKeySubmit} className="flex flex-col sm:flex-row items-center gap-2">
+            <input
+              type="password"
+              value={keyInput}
+              onChange={(e) => setKeyInput(e.target.value)}
+              placeholder="여기에 API 키를 붙여넣으세요"
+              className="flex-grow w-full sm:w-auto bg-white text-stone-800 rounded-full py-3 px-5 focus:outline-none focus:ring-2 focus:ring-rose-400 shadow-inner"
+              aria-label="Gemini API Key"
+            />
+            <button
+              type="submit"
+              disabled={!keyInput.trim()}
+              className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 px-6 rounded-full transition duration-300 disabled:bg-stone-300"
+            >
+              키 저장
+            </button>
+          </form>
+        )}
+      </div>
+
       <input
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
         className="hidden"
         accept="image/*"
-        disabled={isLoading}
+        disabled={isLoading || !userLevel || !apiKey}
       />
       <button
         onClick={handleButtonClick}
-        disabled={isLoading}
-        className="bg-rose-500 hover:bg-rose-600 text-white font-bold py-4 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 shadow-lg disabled:bg-stone-300 disabled:cursor-not-allowed"
+        disabled={isLoading || !userLevel || !apiKey}
+        className="bg-rose-500 hover:bg-rose-600 text-white font-bold py-4 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 shadow-lg disabled:bg-stone-300 disabled:cursor-not-allowed disabled:opacity-50"
       >
         랜드마크 사진 업로드
       </button>
+      {helperText && <p className="text-sm text-stone-500 mt-3 animate-fade-in">{helperText}</p>}
     </div>
   );
-};
-
-interface ResultDisplayProps {
-    imageUrl: string;
-    landmarkInfo: LandmarkInfo;
-    history: string;
-    sources: GroundingSource[];
-    base64Audio: string;
-    imageFile: File;
-    onReset: () => void;
-    onEndTour: () => void;
-}
-
-const ResultDisplay: React.FC<ResultDisplayProps> = ({ imageUrl, landmarkInfo, history, sources, base64Audio, imageFile, onReset, onEndTour }) => {
-    return (
-        <div className="w-full max-w-5xl mx-auto p-4 md:p-8 animate-fade-in">
-            <div className="relative rounded-lg shadow-2xl overflow-hidden mb-8">
-                <img src={imageUrl} alt="업로드된 랜드마크" className="w-full h-auto object-cover max-h-[60vh]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-6 md:p-8 flex flex-col justify-end">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white shadow-text mb-4">{landmarkInfo.name}</h2>
-                    <div className="flex items-center gap-4 justify-center md:justify-start">
-                        <AudioPlayer base64Audio={base64Audio} />
-                    </div>
-                </div>
-            </div>
-
-            <div className="space-y-8 mb-8">
-                <LocationMap latitude={landmarkInfo.latitude} longitude={landmarkInfo.longitude} name={landmarkInfo.name} />
-                <div className="bg-white p-6 rounded-lg shadow-lg">
-                    <h3 className="text-2xl font-semibold text-stone-800 mb-4">역사 엿보기</h3>
-                    <p className="text-stone-700 leading-relaxed">{history}</p>
-                </div>
-            </div>
-            
-            <div className="space-y-8">
-              <FunFact landmarkName={landmarkInfo.name} />
-              <ArtworkGenerator imageFile={imageFile} />
-              <QAChat landmarkName={landmarkInfo.name} history={history} />
-            </div>
-
-            <div className="text-center mt-8 flex flex-wrap justify-center gap-4">
-                <button
-                    onClick={onReset}
-                    className="bg-stone-500 hover:bg-stone-600 text-white font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105"
-                >
-                    다른 사진 분석하기
-                </button>
-                 <button
-                    onClick={onEndTour}
-                    className="bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105"
-                >
-                    투어 종료하기
-                </button>
-            </div>
-        </div>
-    );
 };
 
 const Footer = () => (
@@ -127,10 +164,14 @@ const loadingMessages: Record<LoadingStep, string> = {
     [LoadingStep.GENERATING_SPEECH]: '오디오 가이드 생성 중...',
 };
 
+type ErrorType = 'generic' | 'quota' | 'key' | 'not_found';
+
 const App: React.FC = () => {
+    const [apiKey, setApiKey] = useState<string | null>(null);
     const [loadingStep, setLoadingStep] = useState<LoadingStep>(LoadingStep.IDLE);
     const [failedStep, setFailedStep] = useState<LoadingStep | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [errorType, setErrorType] = useState<ErrorType>('generic');
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [landmarkInfo, setLandmarkInfo] = useState<LandmarkInfo | null>(null);
@@ -139,20 +180,44 @@ const App: React.FC = () => {
     const [base64Audio, setBase64Audio] = useState<string>('');
     const [tourHistory, setTourHistory] = useState<TourStop[]>([]);
     const [isTourEnded, setIsTourEnded] = useState(false);
+    const [userLevel, setUserLevel] = useState<string>('');
+    const [isRetryableError, setIsRetryableError] = useState<boolean>(true);
     
+    useEffect(() => {
+        const storedKey = localStorage.getItem('gemini_api_key');
+        if (storedKey) {
+            setApiKey(storedKey);
+        }
+    }, []);
+
+    const handleApiKeySubmit = (key: string) => {
+        if (key) {
+            localStorage.setItem('gemini_api_key', key);
+            setApiKey(key);
+        } else {
+            localStorage.removeItem('gemini_api_key');
+            setApiKey(null);
+        }
+    };
+
+    const handleInvalidApiKey = () => {
+        localStorage.removeItem('gemini_api_key');
+        setApiKey(null);
+    };
+
     const resetState = useCallback((isNewTour = false) => {
         setLoadingStep(LoadingStep.IDLE);
         setError(null);
+        setErrorType('generic');
         setFailedStep(null);
         setLandmarkInfo(null);
         setHistory('');
         setSources([]);
         setBase64Audio('');
         setImageFile(null);
+        setIsRetryableError(true);
 
         if (imageUrl) {
-            // Only revoke the URL if it's NOT part of the saved tour history.
-            // This prevents revoking URLs we want to view again later in the same tour.
             const isUrlInHistory = tourHistory.some(stop => stop.imageUrl === imageUrl);
             if (!isUrlInHistory) {
                 URL.revokeObjectURL(imageUrl);
@@ -161,14 +226,22 @@ const App: React.FC = () => {
         setImageUrl(null);
         
         if (isNewTour) {
-            // When starting a fresh tour, revoke all previously created object URLs.
             tourHistory.forEach(stop => URL.revokeObjectURL(stop.imageUrl));
             setTourHistory([]);
             setIsTourEnded(false);
+            setUserLevel('');
         }
     }, [imageUrl, tourHistory]);
 
     const handleImageSelect = useCallback(async (file: File) => {
+        if (!userLevel) {
+            alert("탐험가님의 수준을 먼저 선택해주세요.");
+            return;
+        }
+        if (!apiKey) {
+            alert("API 키를 먼저 입력하고 저장해주세요.");
+            return;
+        }
         resetState();
         const objectUrl = URL.createObjectURL(file);
         setImageUrl(objectUrl);
@@ -178,18 +251,18 @@ const App: React.FC = () => {
         try {
             currentStep = LoadingStep.IDENTIFYING;
             setLoadingStep(currentStep);
-            const identifiedLandmark = await identifyLandmark(file);
+            const identifiedLandmark = await identifyLandmark(apiKey, file);
             setLandmarkInfo(identifiedLandmark);
 
             currentStep = LoadingStep.FETCHING_HISTORY;
             setLoadingStep(currentStep);
-            const { text: landmarkHistory, sources: landmarkSources } = await fetchLandmarkHistory(identifiedLandmark.name);
+            const { text: landmarkHistory, sources: landmarkSources } = await fetchLandmarkHistory(apiKey, identifiedLandmark.name, userLevel);
             setHistory(landmarkHistory);
             setSources(landmarkSources);
 
             currentStep = LoadingStep.GENERATING_SPEECH;
             setLoadingStep(currentStep);
-            const audioData = await generateSpeech(landmarkHistory);
+            const audioData = await generateSpeech(apiKey, landmarkHistory);
             setBase64Audio(audioData);
             
             const newTourStop: TourStop = {
@@ -207,24 +280,48 @@ const App: React.FC = () => {
         } catch (err: any) {
             console.error(`Error during step ${currentStep}:`, err);
             URL.revokeObjectURL(objectUrl);
-            setError(`[${loadingMessages[currentStep]}] 단계에서 오류가 발생했습니다: ${err.message || '알 수 없는 오류'}`);
+            
+            let errorMessage = `[${loadingMessages[currentStep]}] 단계에서 오류가 발생했습니다: ${err.message || '알 수 없는 오류'}`;
+            let isRetryable = true;
+            let type: ErrorType = 'generic';
+
+            if (err.message?.includes('API key not valid')) {
+                errorMessage = "유효하지 않은 API 키입니다. 키를 확인하고 '새로 시작'을 눌러 다시 입력해주세요.";
+                isRetryable = false;
+                type = 'key';
+                handleInvalidApiKey();
+            } else if (err.message === "LANDMARK_NOT_FOUND") {
+                errorMessage = "업로드한 사진에서 랜드마크를 찾을 수 없습니다. 다른 사진으로 시도해보세요.";
+                isRetryable = false;
+                type = 'not_found';
+            } else if (err.message?.includes("RESOURCE_EXHAUSTED")) {
+                errorMessage = "API 사용량 할당량을 초과했습니다. 잠시 후 다시 시도하거나, Google AI Studio에서 요금제를 확인해주세요.";
+                isRetryable = false;
+                type = 'quota';
+            }
+
+            setError(errorMessage);
+            setErrorType(type);
+            setIsRetryableError(isRetryable);
             setLoadingStep(LoadingStep.ERROR);
             setFailedStep(currentStep);
         }
-    }, [resetState]);
+    }, [resetState, userLevel, apiKey]);
 
     const handleRetry = useCallback(async () => {
-        if (!failedStep || !imageFile || !imageUrl) return;
+        if (!failedStep || !imageFile || !imageUrl || !userLevel || !apiKey) return;
     
         const stepToRetry = failedStep;
         setError(null);
+        setErrorType('generic');
         setLoadingStep(stepToRetry);
         setFailedStep(null);
+        setIsRetryableError(true);
     
         try {
             let landmarkToUse = landmarkInfo;
             if (stepToRetry <= LoadingStep.IDENTIFYING) {
-                const identifiedLandmark = await identifyLandmark(imageFile);
+                const identifiedLandmark = await identifyLandmark(apiKey, imageFile);
                 setLandmarkInfo(identifiedLandmark);
                 landmarkToUse = identifiedLandmark;
             }
@@ -234,7 +331,7 @@ const App: React.FC = () => {
             let sourcesToUse = sources;
             if (stepToRetry <= LoadingStep.FETCHING_HISTORY) {
                 setLoadingStep(LoadingStep.FETCHING_HISTORY);
-                const { text: landmarkHistory, sources: landmarkSources } = await fetchLandmarkHistory(landmarkToUse.name);
+                const { text: landmarkHistory, sources: landmarkSources } = await fetchLandmarkHistory(apiKey, landmarkToUse.name, userLevel);
                 setHistory(landmarkHistory);
                 setSources(landmarkSources);
                 historyToUse = landmarkHistory;
@@ -244,7 +341,7 @@ const App: React.FC = () => {
             let audioToUse = base64Audio;
             if (stepToRetry <= LoadingStep.GENERATING_SPEECH) {
                 setLoadingStep(LoadingStep.GENERATING_SPEECH);
-                const audioData = await generateSpeech(historyToUse);
+                const audioData = await generateSpeech(apiKey, historyToUse);
                 setBase64Audio(audioData);
                 audioToUse = audioData;
             }
@@ -264,11 +361,33 @@ const App: React.FC = () => {
             }
         } catch (err: any) {
             console.error(`Error during retry of step ${stepToRetry}:`, err);
-            setError(`[${loadingMessages[stepToRetry]}] 재시도 중 오류가 발생했습니다: ${err.message || '알 수 없는 오류'}`);
+            
+            let errorMessage = `[${loadingMessages[stepToRetry]}] 재시도 중 오류가 발생했습니다: ${err.message || '알 수 없는 오류'}`;
+            let isRetryable = true;
+            let type: ErrorType = 'generic';
+
+            if (err.message?.includes('API key not valid')) {
+                errorMessage = "유효하지 않은 API 키입니다. 키를 확인하고 '새로 시작'을 눌러 다시 입력해주세요.";
+                isRetryable = false;
+                type = 'key';
+                handleInvalidApiKey();
+            } else if (err.message === "LANDMARK_NOT_FOUND") {
+                errorMessage = "업로드한 사진에서 랜드마크를 찾을 수 없습니다. 다른 사진으로 시도해보세요.";
+                isRetryable = false;
+                type = 'not_found';
+            } else if (err.message?.includes("RESOURCE_EXHAUSTED")) {
+                errorMessage = "API 사용량 할당량을 초과했습니다. 잠시 후 다시 시도하거나, Google AI Studio에서 요금제를 확인해주세요.";
+                isRetryable = false;
+                type = 'quota';
+            }
+            
+            setError(errorMessage);
+            setErrorType(type);
+            setIsRetryableError(isRetryable);
             setLoadingStep(LoadingStep.ERROR);
             setFailedStep(stepToRetry);
         }
-    }, [failedStep, imageFile, landmarkInfo, history, tourHistory, imageUrl, sources, base64Audio]);
+    }, [failedStep, imageFile, landmarkInfo, history, tourHistory, imageUrl, sources, base64Audio, userLevel, apiKey]);
 
     const handleEndTour = () => setIsTourEnded(true);
     const handleRestartTour = () => resetState(true);
@@ -293,7 +412,7 @@ const App: React.FC = () => {
 
     return (
         <div className="flex flex-col min-h-screen">
-            <main className={`flex-grow w-full flex flex-col items-center justify-center p-4 relative ${loadingStep === LoadingStep.IDLE && !isTourEnded ? 'world-map-bg' : ''}`}>
+            <main className={`flex-grow w-full flex flex-col items-center justify-center p-4 relative`}>
                 {isTourEnded ? (
                     <TourSummary 
                         tourHistory={tourHistory.map(stop => stop.landmarkInfo)} 
@@ -302,7 +421,16 @@ const App: React.FC = () => {
                     />
                 ) : (
                     <>
-                        {loadingStep === LoadingStep.IDLE && <ImageUploader onImageSelect={handleImageSelect} isLoading={isLoading} />}
+                        {loadingStep === LoadingStep.IDLE && (
+                            <ImageUploader 
+                                onImageSelect={handleImageSelect} 
+                                isLoading={isLoading} 
+                                userLevel={userLevel} 
+                                setUserLevel={setUserLevel}
+                                apiKey={apiKey}
+                                onApiKeySubmit={handleApiKeySubmit}
+                            />
+                        )}
                         
                         {(loadingStep !== LoadingStep.IDLE) && imageUrl && (
                              <div className="relative w-full max-w-5xl mx-auto">
@@ -311,24 +439,38 @@ const App: React.FC = () => {
                                     <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 p-8 text-center rounded-lg">
                                         <h2 className="text-2xl font-bold text-red-600 mb-4">분석 실패</h2>
                                         <p className="text-stone-600 mb-6 max-w-md">{error}</p>
+                                        
+                                        {errorType === 'quota' && (
+                                            <div className="text-sm text-stone-500 mb-6 bg-rose-50 p-3 rounded-lg shadow-inner">
+                                                <p>자세한 정보는 아래 링크를 참조하세요:</p>
+                                                <div className="mt-2">
+                                                    <a href="https://ai.google.dev/gemini-api/docs/rate-limits" target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline">API 속도 제한</a>
+                                                    <span className="mx-2">|</span>
+                                                    <a href="https://ai.dev/usage?tab=rate-limit" target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline">사용량 모니터링</a>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
                                         <div className="flex gap-4">
-                                            <button
-                                                onClick={handleRetry}
-                                                className="bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 px-6 rounded-full transition duration-300"
-                                            >
-                                                재시도
-                                            </button>
+                                            {isRetryableError && (
+                                                <button
+                                                    onClick={handleRetry}
+                                                    className="bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 px-6 rounded-full transition duration-300"
+                                                >
+                                                    재시도
+                                                </button>
+                                            )}
                                              <button
                                                 onClick={() => resetState()}
                                                 className="bg-stone-500 hover:bg-stone-600 text-white font-bold py-2 px-6 rounded-full transition duration-300"
                                             >
-                                                취소
+                                                {isRetryableError ? '취소' : '새로 시작'}
                                             </button>
                                         </div>
                                     </div>
                                 )}
                                 
-                                {loadingStep === LoadingStep.DONE && imageFile && landmarkInfo ? (
+                                {loadingStep === LoadingStep.DONE && imageFile && landmarkInfo && apiKey ? (
                                     <ResultDisplay 
                                         imageUrl={imageUrl}
                                         landmarkInfo={landmarkInfo}
@@ -338,6 +480,8 @@ const App: React.FC = () => {
                                         imageFile={imageFile}
                                         onReset={() => resetState()}
                                         onEndTour={handleEndTour}
+                                        userLevel={userLevel}
+                                        apiKey={apiKey}
                                     />
                                 ) : (
                                     <div className={`transition-opacity duration-500 ${isLoading || loadingStep === LoadingStep.ERROR ? 'opacity-30' : 'opacity-0'}`}>

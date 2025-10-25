@@ -5,9 +5,11 @@ import { ChatMessage } from '../types';
 interface QAChatProps {
     landmarkName: string;
     history: string;
+    userLevel: string;
+    apiKey: string;
 }
 
-const QAChat: React.FC<QAChatProps> = ({ landmarkName, history }) => {
+const QAChat: React.FC<QAChatProps> = ({ landmarkName, history, userLevel, apiKey }) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -31,7 +33,7 @@ const QAChat: React.FC<QAChatProps> = ({ landmarkName, history }) => {
         setLastMessage(message);
 
         try {
-            const modelResponse = await askQuestion(landmarkName, history, message);
+            const modelResponse = await askQuestion(apiKey, landmarkName, history, message, userLevel);
             const modelMessage: ChatMessage = { role: 'model', content: modelResponse };
             setMessages((prev) => [...prev, modelMessage]);
             setLastMessage('');

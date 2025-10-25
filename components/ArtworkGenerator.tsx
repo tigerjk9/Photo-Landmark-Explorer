@@ -3,6 +3,7 @@ import { generateArtwork } from '../services/geminiService';
 
 interface ArtworkGeneratorProps {
     imageFile: File;
+    apiKey: string;
 }
 
 const artStyles = [
@@ -12,7 +13,7 @@ const artStyles = [
     { name: '스케치', prompt: 'a detailed pencil sketch' },
 ];
 
-const ArtworkGenerator: React.FC<ArtworkGeneratorProps> = ({ imageFile }) => {
+const ArtworkGenerator: React.FC<ArtworkGeneratorProps> = ({ imageFile, apiKey }) => {
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -26,7 +27,7 @@ const ArtworkGenerator: React.FC<ArtworkGeneratorProps> = ({ imageFile }) => {
         setActiveStyle(styleName);
         setLastAttemptedStyle({ name: styleName, prompt: stylePrompt });
         try {
-            const base64Image = await generateArtwork(imageFile, stylePrompt);
+            const base64Image = await generateArtwork(apiKey, imageFile, stylePrompt);
             setGeneratedImage(`data:image/png;base64,${base64Image}`);
         } catch (err) {
             setError('아트웍 생성에 실패했습니다. 다시 시도해주세요.');
