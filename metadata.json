@@ -1,0 +1,5 @@
+{
+  "name": "포토 랜드마크 탐험가",
+  "description": "랜드마크 사진을 업로드하여 AI가 들려주는 해설과 함께 그 역사를 알아보세요. 이 앱은 Gemini를 사용하여 랜드마크를 식별하고, Google 검색으로 역사적 맥락을 찾으며, 음성 해설을 생성합니다.",
+  "requestFramePermissions": []
+}
