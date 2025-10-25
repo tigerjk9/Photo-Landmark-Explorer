@@ -170,6 +170,36 @@ export const generateArtwork = async (apiKey: string, imageFile: File, style: st
     throw new Error("생성된 아트워크 이미지를 찾을 수 없습니다.");
 };
 
+export const getEmojisForLandmarks = async (apiKey: string, landmarkNames: string[]): Promise<string[]> => {
+    const ai = getAi(apiKey);
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `For each landmark in the following list, provide a single, most representative emoji. Return the response as a JSON object with a key "emojis" containing an array of strings, where each string is just the emoji. The order must match the input list. The list is: ${JSON.stringify(landmarkNames)}`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    emojis: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING, description: "A single emoji character" }
+                    }
+                },
+                required: ["emojis"]
+            }
+        },
+    });
+    try {
+        const result: { emojis: string[] } = JSON.parse(response.text);
+        if (result.emojis && result.emojis.length === landmarkNames.length) {
+            return result.emojis;
+        }
+    } catch (e) {
+        console.error("Failed to parse emoji response:", e);
+    }
+    // Fallback if parsing fails or lengths don't match
+    return landmarkNames.map(() => '📍');
+};
 
 export const fetchFunFact = async (apiKey: string, landmarkName: string, level: string): Promise<string> => {
     const ai = getAi(apiKey);

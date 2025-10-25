@@ -6,6 +6,7 @@ interface TourSummaryProps {
     tourHistory: LandmarkInfo[];
     onRestart: () => void;
     onSelectLandmark: (index: number) => void;
+    apiKey: string | null;
 }
 
 const LandmarkCard: React.FC<{ landmark: LandmarkInfo; index: number; onClick: () => void; }> = ({ landmark, index, onClick }) => {
@@ -27,7 +28,7 @@ const LandmarkCard: React.FC<{ landmark: LandmarkInfo; index: number; onClick: (
     );
 };
 
-const TourSummary: React.FC<TourSummaryProps> = ({ tourHistory, onRestart, onSelectLandmark }) => {
+const TourSummary: React.FC<TourSummaryProps> = ({ tourHistory, onRestart, onSelectLandmark, apiKey }) => {
     const [explorerName, setExplorerName] = useState('');
     const [showCertificate, setShowCertificate] = useState(false);
 
@@ -85,8 +86,8 @@ const TourSummary: React.FC<TourSummaryProps> = ({ tourHistory, onRestart, onSel
                 </div>
             )}
             
-            {showCertificate && tourHistory.length > 0 && (
-                <Certificate explorerName={explorerName} tourHistory={tourHistory} />
+            {showCertificate && tourHistory.length > 0 && apiKey && (
+                <Certificate explorerName={explorerName} tourHistory={tourHistory} apiKey={apiKey} />
             )}
 
 

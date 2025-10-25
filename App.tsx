@@ -4,6 +4,7 @@ import { identifyLandmark, fetchLandmarkHistory, generateSpeech } from './servic
 import Spinner from './components/Spinner';
 import TourSummary from './components/TourSummary';
 import ResultDisplay from './components/ResultDisplay';
+import ApiKeyPrompt from './components/ApiKeyPrompt';
 
 // --- Helper components defined outside App to prevent re-rendering issues ---
 
@@ -26,7 +27,6 @@ const userLevels = [
 
 const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelect, isLoading, userLevel, setUserLevel, apiKey, onApiKeySubmit }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [keyInput, setKeyInput] = useState('');
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -37,14 +37,6 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelect, isLoading,
 
   const handleButtonClick = () => {
     fileInputRef.current?.click();
-  };
-  
-  const handleKeySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (keyInput.trim()) {
-      onApiKeySubmit(keyInput.trim());
-      setKeyInput('');
-    }
   };
 
   const getHelperText = () => {
@@ -83,48 +75,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelect, isLoading,
         </div>
       </div>
       
-      <div className="mb-8 p-6 bg-white/30 backdrop-blur-sm rounded-lg">
-        <div className="flex justify-between items-center mb-4">
-           <h2 className="text-xl font-semibold text-stone-700">Google Gemini API 키</h2>
-           <a 
-                href="https://aistudio.google.com/app/apikey" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-sm bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-1 px-3 rounded-full transition duration-300 transform hover:scale-105"
-            >
-                키 받으러 가기
-            </a>
-        </div>
-        {apiKey ? (
-           <div className="flex items-center gap-2">
-             <p className="flex-grow text-left bg-white/50 p-3 rounded-full text-stone-600 shadow-inner px-5">API 키가 저장되었습니다.</p>
-             <button 
-                onClick={() => onApiKeySubmit('')} 
-                className="bg-stone-400 hover:bg-stone-500 text-white font-semibold py-2 px-4 rounded-full transition-colors"
-             >
-                수정
-             </button>
-           </div>
-        ) : (
-          <form onSubmit={handleKeySubmit} className="flex flex-col sm:flex-row items-center gap-2">
-            <input
-              type="password"
-              value={keyInput}
-              onChange={(e) => setKeyInput(e.target.value)}
-              placeholder="여기에 API 키를 붙여넣으세요"
-              className="flex-grow w-full sm:w-auto bg-white text-stone-800 rounded-full py-3 px-5 focus:outline-none focus:ring-2 focus:ring-rose-400 shadow-inner"
-              aria-label="Gemini API Key"
-            />
-            <button
-              type="submit"
-              disabled={!keyInput.trim()}
-              className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 px-6 rounded-full transition duration-300 disabled:bg-stone-300"
-            >
-              키 저장
-            </button>
-          </form>
-        )}
-      </div>
+      <ApiKeyPrompt apiKey={apiKey} onApiKeySubmit={onApiKeySubmit} />
 
       <input
         type="file"
@@ -146,7 +97,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelect, isLoading,
   );
 };
 
-const Footer = () => (
+const Footer = (): React.ReactNode => (
     <footer className="w-full text-center p-6 text-sm text-stone-500 mt-auto">
         <p>Made by 김진관 (<a href="https://litt.ly/dot_connector" target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline">닷커넥터</a>)</p>
         <p className="mt-1">배움, 나눔, 성장을 추구하는 연결주의자</p>
@@ -418,6 +369,7 @@ const App: React.FC = () => {
                         tourHistory={tourHistory.map(stop => stop.landmarkInfo)} 
                         onRestart={handleRestartTour} 
                         onSelectLandmark={handleSelectLandmark}
+                        apiKey={apiKey}
                     />
                 ) : (
                     <>
