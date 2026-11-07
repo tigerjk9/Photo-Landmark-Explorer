@@ -27,7 +27,7 @@ export const identifyLandmark = async (apiKey: string, imageFile: File): Promise
     const ai = getAi(apiKey);
     const imagePart = await fileToGenerativePart(imageFile);
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash-lite',
         contents: {
             parts: [
                 imagePart,
@@ -90,7 +90,7 @@ export const fetchLandmarkHistory = async (apiKey: string, landmarkName: string,
     const ai = getAi(apiKey);
     const audiencePrompt = getAudiencePrompt(level);
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash-lite",
         contents: `${landmarkName}의 역사에 대해 설명해줘. 가장 중요한 사실 위주로 3~4문장으로 요약해줘. 답변에 ** 같은 마크다운 서식은 절대 사용하지 마. ${audiencePrompt}`,
         config: {
             tools: [{ googleSearch: {} }],
@@ -137,7 +137,7 @@ export const askQuestion = async (apiKey: string, landmarkName: string, history:
     const ai = getAi(apiKey);
     const audiencePrompt = getAudiencePrompt(level);
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash-lite',
         contents: `당신은 박물관 도슨트입니다. 아래 랜드마크 정보와 역사를 바탕으로 사용자의 질문에 답변해주세요. 답변은 짧고 명확해야 하며, ** 같은 마크다운 서식은 절대 사용하지 마세요. ${audiencePrompt}
         랜드마크: ${landmarkName}
         알려진 역사: ${history}
@@ -173,7 +173,7 @@ export const generateArtwork = async (apiKey: string, imageFile: File, style: st
 export const getEmojisForLandmarks = async (apiKey: string, landmarkNames: string[]): Promise<string[]> => {
     const ai = getAi(apiKey);
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash-lite',
         contents: `For each landmark in the following list, provide a single, most representative emoji. Return the response as a JSON object with a key "emojis" containing an array of strings, where each string is just the emoji. The order must match the input list. The list is: ${JSON.stringify(landmarkNames)}`,
         config: {
             responseMimeType: "application/json",
@@ -205,7 +205,7 @@ export const fetchFunFact = async (apiKey: string, landmarkName: string, level: 
     const ai = getAi(apiKey);
     const audiencePrompt = getAudiencePrompt(level);
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash-lite',
         contents: `${landmarkName}에 대한 흥미로운 사실을 한 가지 알려줘. 짧고 재미있게, 그리고 ** 같은 마크다운은 빼고 말해줘. ${audiencePrompt}`,
     });
     return response.text.replace(/\*\*/g, '');
