@@ -4,7 +4,7 @@ import AudioPlayer from './AudioPlayer';
 import FunFact from './FunFact';
 import ArtworkGenerator from './ArtworkGenerator';
 import QAChat from './QAChat';
-import LocationMap from './LocationMap';
+import LocationPanel from './LocationPanel';
 
 interface ResultDisplayProps {
     imageUrl: string;
@@ -34,7 +34,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ imageUrl, landmarkInfo, h
             </div>
 
             <div className="space-y-8 mb-8">
-                <LocationMap latitude={landmarkInfo.latitude} longitude={landmarkInfo.longitude} name={landmarkInfo.name} />
+                <LocationPanel key={`${landmarkInfo.name}-${landmarkInfo.latitude}-${landmarkInfo.longitude}`} latitude={landmarkInfo.latitude} longitude={landmarkInfo.longitude} name={landmarkInfo.name} city={landmarkInfo.city} country={landmarkInfo.country} />
                 <div className="bg-white p-6 rounded-lg shadow-lg">
                     <h3 className="text-2xl font-semibold text-stone-800 mb-4">역사 엿보기</h3>
                     <p className="text-stone-700 leading-relaxed">{history}</p>
